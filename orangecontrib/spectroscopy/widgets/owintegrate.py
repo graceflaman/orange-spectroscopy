@@ -142,6 +142,11 @@ class IntegrateBaselineEditor(IntegrateSimpleEditor):
     integrator = Integrate.Baseline
 
 
+class IntegrateBaselineAbsoluteEditor(IntegrateSimpleEditor):
+    qualname = "orangecontrib.infrared.integrate.baseline_absolute"
+    integrator = Integrate.BaselineAbsolute
+
+
 class IntegratePeakMaxEditor(IntegrateSimpleEditor):
     qualname = "orangecontrib.infrared.integrate.peak_max"
     integrator = Integrate.PeakMax
@@ -175,6 +180,16 @@ class IntegratePeakXBaselineEditor(IntegrateSimpleEditor):
     integrator = Integrate.PeakXBaseline
 
 
+class IntegrateStandardDeviation(IntegrateSimpleEditor):
+    qualname = "orangecontrib.infrared.integrate.standard_deviation"
+    integrator = Integrate.StandardDeviation
+
+
+class IntegrateAllanDev(IntegrateSimpleEditor):
+    qualname = "orangecontrib.infrared.integrate.allan_deviation"
+    integrator = Integrate.AllanDev
+
+
 class IntegrateSeparateBaselineEditor(IntegrateSimpleEditor):
     qualname = "orangecontrib.infrared.integrate.baseline_separate"
     integrator = Integrate.Separate
@@ -199,12 +214,15 @@ PREPROCESSORS = [
     ) for c in [
         IntegrateSimpleEditor,
         IntegrateBaselineEditor,
+        IntegrateBaselineAbsoluteEditor,
         IntegratePeakMaxEditor,
         IntegratePeakMaxBaselineEditor,
         IntegrateAtEditor,
         IntegratePeakXEditor,
         IntegratePeakXBaselineEditor,
         IntegrateSeparateBaselineEditor,
+        IntegrateStandardDeviation,
+        IntegrateAllanDev
     ]
 ]
 

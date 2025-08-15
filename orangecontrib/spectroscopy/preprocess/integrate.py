@@ -12,7 +12,7 @@ from AnyQt.QtCore import Qt
 from orangecontrib.spectroscopy.data import getx
 from orangecontrib.spectroscopy.preprocess.utils import nan_extend_edges_and_interpolate, \
     CommonDomain, \
-    edge_baseline, linear_baseline
+    edge_baseline, linear_baseline, replace_infs
 
 INTEGRATE_DRAW_CURVE_WIDTH = 2
 INTEGRATE_DRAW_EDGE_WIDTH = 1
@@ -110,6 +110,20 @@ class IntegrateFeatureEdgeBaseline(IntegrateFeature):
                 ("fill", ((x, self.compute_baseline(x, ys)), (x, ys)))]
 
 
+class IntegrateFeatureEdgeBaselineAbsolute(IntegrateFeatureEdgeBaseline):
+    """ A linear edge-to-edge baseline subtraction. """
+
+    name = "Absolute integral from baseline"
+    InheritEq = True
+
+    def compute_integral(self, x, y_s):
+        if np.any(np.isnan(y_s)):
+            # interpolate unknowns as trapz can not handle them
+            y_s, _ = nan_extend_edges_and_interpolate(x, y_s)
+        y_s = y_s - self.compute_baseline(x, y_s)
+        return np.trapezoid(np.abs(y_s), x, axis=1)
+
+
 class IntegrateFeatureSeparateBaseline(IntegrateFeature):
 
     name = "Integral from separate baseline"
@@ -201,6 +215,55 @@ class IntegrateFeaturePeakSimple(IntegrateFeaturePeakEdgeBaseline):
 
     def compute_baseline(self, x_s, y_s):
         return np.zeros(y_s.shape)
+
+
+class IntegrateFeatureStandardDeviation(IntegrateFeatureSimple):
+    """ The standard deviation of the provided data window. """
+
+    name = "Standard Deviation"
+    InheritEq = True
+
+    def limit_region(self, x_s, y_s):
+        lim_min, lim_max = min(self.limits[:2]), max(self.limits[:2])
+        lim_min = np.searchsorted(x_s, lim_min, side="left")
+        lim_max = np.searchsorted(x_s, lim_max, side="right")
+        x_s = x_s[lim_min:lim_max]
+        y_s = y_s[:, lim_min:lim_max]
+        return x_s, y_s
+
+    def compute_integral(self, x_s, y_s):
+        self.limit_region(x_s, y_s)
+        if np.any(np.isnan(y_s)):
+            y_s, _ = nan_extend_edges_and_interpolate(x_s, y_s)
+        return replace_infs(np.std(y_s, axis=1))
+
+
+class IntegrateFeatureAllanDev(IntegrateFeature):
+    """ The Allan Deviation of the provided data window """
+
+    name = "Allan Deviation"
+    InheritEq = True
+
+    @staticmethod
+    def parameters():
+        return (("Low limit", "Low limit for integration (inclusive)"),
+                ("High limit", "High limit for integration (inclusive)"),
+                )
+
+    def limit_region(self, x_s, y_s):
+        lim_min, lim_max = min(self.limits[:2]), max(self.limits[:2])
+        lim_min = np.searchsorted(x_s, lim_min, side="left")
+        lim_max = np.searchsorted(x_s, lim_max, side="right")
+        x_s = x_s[lim_min:lim_max]
+        y_s = y_s[:, lim_min:lim_max]
+        return x_s, y_s
+
+    def compute_integral(self, x_s, y_s):
+        # Sum of the square of the delta values across the spectral region
+        self.limit_region(x_s, y_s)
+        delta_square_sum = np.sum(np.square(np.diff(y_s, axis=1)), axis=1)
+        # Inverse square root of the delta square sum normalized by length of spectral region
+        return replace_infs(1/np.sqrt(delta_square_sum / y_s.shape[1]))
 
 
 class IntegrateFeaturePeakXEdgeBaseline(IntegrateFeature):
@@ -303,15 +366,18 @@ class Integrate(Preprocess):
 
     INTEGRALS = [IntegrateFeatureSimple,
                  IntegrateFeatureEdgeBaseline,
+                 IntegrateFeatureEdgeBaselineAbsolute,
                  IntegrateFeaturePeakSimple,
                  IntegrateFeaturePeakEdgeBaseline,
                  IntegrateFeatureAtPeak,
                  IntegrateFeaturePeakXSimple,
                  IntegrateFeaturePeakXEdgeBaseline,
-                 IntegrateFeatureSeparateBaseline]
+                 IntegrateFeatureSeparateBaseline,
+                 IntegrateFeatureStandardDeviation,
+                 IntegrateFeatureAllanDev]
 
     # Integration methods
-    Simple, Baseline, PeakMax, PeakBaseline, PeakAt, PeakX, PeakXBaseline, Separate = INTEGRALS
+    Simple, Baseline, BaselineAbsolute, PeakMax, PeakBaseline, PeakAt, PeakX, PeakXBaseline, Separate, StandardDeviation, AllanDev = INTEGRALS
 
     def __init__(self, methods=Baseline, limits=None, names=None, metas=False):
         self.methods = methods
