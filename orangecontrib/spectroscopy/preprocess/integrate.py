@@ -235,7 +235,7 @@ class IntegrateFeatureStandardDeviation(IntegrateFeatureSimple):
         self.limit_region(x_s, y_s)
         if np.any(np.isnan(y_s)):
             y_s, _ = nan_extend_edges_and_interpolate(x_s, y_s)
-        return replace_infs(np.std(y_s, axis=1))
+        return np.std(replace_infs(y_s), axis=1)
 
 
 class IntegrateFeatureAllanDev(IntegrateFeature):
