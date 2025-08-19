@@ -242,7 +242,7 @@ class IntegrateFeatureStandardDeviation(IntegrateFeatureSimple):
 class IntegrateFeatureAllanDev(IntegrateFeature):
     """ The Allan Deviation of the provided data window """
 
-    name = "Allan Deviation"
+    name = "Inverse Allan Deviation"
     InheritEq = True
 
     @staticmethod
