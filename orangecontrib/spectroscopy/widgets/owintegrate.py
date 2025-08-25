@@ -180,7 +180,7 @@ class IntegratePeakXBaselineEditor(IntegrateSimpleEditor):
     integrator = Integrate.PeakXBaseline
 
 class IntegrateIntegralRatio(IntegrateSimpleEditor):
-    qualname = "orangecontrib.infrared.integrate.peaktopeak_ratio"
+    qualname = "orangecontrib.infrared.integrate.peaktopeak_height_ratio"
     integrator = Integrate.P2PIntegralRatio
 
     def set_preview_data(self, data):
