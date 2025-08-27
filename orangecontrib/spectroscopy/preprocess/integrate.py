@@ -329,7 +329,7 @@ class IntegrateFeaturePeaktoPeakHeightBaselineRatio(IntegrateFeaturePeakEdgeBase
         lines_d = (x_denominator[im_d], bs_d[np.arange(bs_d.shape[0]), im_d]), (x_denominator[im_d], ys_denominator[np.arange(ys_denominator.shape[0]), im_d])
         return [("curve", (x_numerator, bs_n, INTEGRATE_DRAW_BASELINE_PENARGS)),
                 ("curve", (x_numerator, ys_numerator, INTEGRATE_DRAW_BASELINE_PENARGS)),
-                ("curve", (x_denominator, self.compute_baseline(x_denominator, ys_denominator), INTEGRATE_DRAW_BASELINE_PENARGS)),
+                ("curve", (x_denominator, bs_n, INTEGRATE_DRAW_BASELINE_PENARGS)),
                 ("curve", (x_denominator, ys_denominator, INTEGRATE_DRAW_BASELINE_PENARGS)),
                 ("line", lines_n),
                 ("line", lines_d)
