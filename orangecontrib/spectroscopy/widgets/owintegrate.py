@@ -62,6 +62,8 @@ class IntegrateOneEditor(BaseEditorOrange):
             color = (225, 0, 0)
             if "baseline" in name:
                 color = (255, 140, 26)
+            if "denominator" in name:
+                color = (165, 30, 200)
 
             l = MovableVline(position=v, label=name, color=color)
             def set_rounded(_, line=l, name=name):
