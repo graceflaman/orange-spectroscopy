@@ -27,7 +27,7 @@ def best_fit_results(model_result, x, shape):
     col = 0
     for comp in out.model.components:
         # Peak area
-        output[col] = np.trapz(np.broadcast_to(comps[comp.prefix], x.shape), sorted_x)
+        output[col] = np.trapezoid(np.broadcast_to(comps[comp.prefix], x.shape), sorted_x)
         col += 1
         for param in [n for n in out.var_names if n.startswith(comp.prefix)]:
             output[col] = best_values[param]
