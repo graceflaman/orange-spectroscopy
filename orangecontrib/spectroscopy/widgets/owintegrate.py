@@ -195,6 +195,22 @@ class IntegrateIntegralRatio(IntegrateSimpleEditor):
         super().set_preview_data(data)
 
 
+class IntegratePeakHeightRatio(IntegrateSimpleEditor):
+    qualname = "orangecontrib.infrared.integrate.peaktopeak_height_baseline_ratio"
+    integrator = Integrate.P2PHeightRatio
+
+    def set_preview_data(self, data):
+        if not self.user_changed:
+            x = getx(data)
+            if len(x):
+                self.set_value("Low limit (numerator)", min(x), user=False)
+                self.set_value("High limit (numerator)", max(x), user=False)
+                self.set_value("Low limit (denominator)", min(x), user=False)
+                self.set_value("High limit (denominator)", max(x), user=False)
+                self.edited.emit()
+        super().set_preview_data(data)
+
+
 class IntegrateStandardDeviation(IntegrateSimpleEditor):
     qualname = "orangecontrib.infrared.integrate.standard_deviation"
     integrator = Integrate.StandardDeviation
@@ -237,6 +253,7 @@ PREPROCESSORS = [
         IntegratePeakXBaselineEditor,
         IntegrateSeparateBaselineEditor,
         IntegrateIntegralRatio,
+        IntegratePeakHeightRatio,
         IntegrateStandardDeviation,
         IntegrateAllanDev
     ]

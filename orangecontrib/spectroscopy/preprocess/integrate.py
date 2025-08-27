@@ -273,6 +273,69 @@ class IntegrateFeaturePeakEdgeBaseline(IntegrateFeature):
                 ("line", lines)]
 
 
+class IntegrateFeaturePeaktoPeakHeightBaselineRatio(IntegrateFeaturePeakEdgeBaseline):
+    """ The maximum baseline-subtracted peak height in the provided window. """
+
+    name = "Peak to Peak Height from Baseline Ratio"
+    InheritEq = True
+
+    @staticmethod
+    def parameters():
+        return (("Low limit (numerator)", "Low limit for numerator integration (inclusive)"),
+                ("High limit (numerator)", "High limit for numerator integration (inclusive)"),
+                ("Low limit (denominator)", "Low limit for denominator integration (inclusive)"),
+                ("High limit (denominator)", "High limit for denominator integration (inclusive)"),
+                )
+
+    def compute_baseline_numerator(self, x, y):
+        return linear_baseline(x, y, zero_points=[self.limits[0], self.limits[1]]) if len(x) else 0
+
+    def compute_baseline_denominator(self, x, y):
+        return linear_baseline(x, y, zero_points=[self.limits[2], self.limits[3]]) if len(x) else 0
+
+    def select_limit_numerator(self, x_s, y_s):
+        lim_min, lim_max = min(self.limits[:2]), max(self.limits[:2])
+        lim_min = np.searchsorted(x_s, lim_min, side="left")
+        lim_max = np.searchsorted(x_s, lim_max, side="right")
+        x_s = x_s[lim_min:lim_max]
+        y_s = y_s[:, lim_min:lim_max]
+        return x_s, y_s
+
+    def select_limit_denominator(self, x_s, y_s):
+        lim_min, lim_max = min(self.limits[2:]), max(self.limits[2:])
+        lim_min = np.searchsorted(x_s, lim_min, side="left")
+        lim_max = np.searchsorted(x_s, lim_max, side="right")
+        x_s = x_s[lim_min:lim_max]
+        y_s = y_s[:, lim_min:lim_max]
+        return x_s, y_s
+
+    def compute_integral(self, x_s, y_s):
+        x_s_numerator, y_s_numerator = self.select_limit_numerator(x_s, y_s)
+        x_s_denominator, y_s_denominator = self.select_limit_denominator(x_s, y_s)
+        y_s_numerator = y_s_numerator - self.compute_baseline(x_s_numerator, y_s_numerator)
+        y_s_denominator = y_s_denominator - self.compute_baseline(x_s_denominator, y_s_denominator)
+        if len(x_s) == 0:
+            return np.zeros((y_s.shape[0],)) * np.nan
+        return bottleneck.nanmax(y_s_numerator, axis=1) / bottleneck.nanmax(y_s_denominator, axis=1)
+
+    def compute_draw_info(self, x, ys):
+        x_numerator, ys_numerator = self.select_limit_numerator(x, ys)
+        x_denominator, ys_denominator = self.select_limit_denominator(x, ys)
+        bs_n = self.compute_baseline(x_numerator, ys_numerator)
+        bs_d = self.compute_baseline(x_denominator, ys_denominator)
+        im_n = bottleneck.nanargmax(ys_numerator-bs_n, axis=1)
+        im_d = bottleneck.nanargmax(ys_denominator-bs_d, axis=1)
+        lines_n = (x_numerator[im_n], bs_n[np.arange(bs_n.shape[0]), im_n]), (x_numerator[im_n], ys_numerator[np.arange(ys_numerator.shape[0]), im_n])
+        lines_d = (x_denominator[im_d], bs_d[np.arange(bs_d.shape[0]), im_d]), (x_denominator[im_d], ys_denominator[np.arange(ys_denominator.shape[0]), im_d])
+        return [("curve", (x_numerator, bs_n, INTEGRATE_DRAW_BASELINE_PENARGS)),
+                ("curve", (x_numerator, ys_numerator, INTEGRATE_DRAW_BASELINE_PENARGS)),
+                ("curve", (x_denominator, self.compute_baseline(x_denominator, ys_denominator), INTEGRATE_DRAW_BASELINE_PENARGS)),
+                ("curve", (x_denominator, ys_denominator, INTEGRATE_DRAW_BASELINE_PENARGS)),
+                ("line", lines_n),
+                ("line", lines_d)
+                ]
+
+
 class IntegrateFeaturePeakSimple(IntegrateFeaturePeakEdgeBaseline):
     """ The maximum peak height in the provided data window. """
 
@@ -441,11 +504,12 @@ class Integrate(Preprocess):
                  IntegrateFeaturePeakXEdgeBaseline,
                  IntegrateFeatureSeparateBaseline,
                  IntegrateFeaturePeaktoPeakIntegralRatio,
+                 IntegrateFeaturePeaktoPeakHeightBaselineRatio,
                  IntegrateFeatureStandardDeviation,
                  IntegrateFeatureAllanDev]
 
     # Integration methods
-    Simple, Baseline, BaselineAbsolute, PeakMax, PeakBaseline, PeakAt, PeakX, PeakXBaseline, Separate, P2PIntegralRatio, StandardDeviation, AllanDev = INTEGRALS
+    Simple, Baseline, BaselineAbsolute, PeakMax, PeakBaseline, PeakAt, PeakX, PeakXBaseline, Separate, P2PIntegralRatio, P2PHeightRatio, StandardDeviation, AllanDev = INTEGRALS
 
     def __init__(self, methods=Baseline, limits=None, names=None, metas=False):
         self.methods = methods
