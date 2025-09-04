@@ -142,18 +142,6 @@ class IntegrateFeatureFullWidthHalfMaxBaseline(IntegrateFeature):
         width = abs(x[edge_max] - x[edge_min])
         return x, peak_max, x_half_min, y_s_half_peak_min, x_half_max, y_s_half_peak_max, width
 
-    def limit_region(self, x_s, y_s):
-        peak_height = bottleneck.nanargmax(y_s, axis=1)
-        lim_min, lim_max = min(self.limits), max(self.limits)
-        print(lim_max, lim_min, peak_height)
-        # lim_min = np.searchsorted(x_s, lim_min, side="left")
-        # lim_max = np.searchsorted(x_s, lim_max, side="right")
-        # x_s_1 = x_s[lim_min:peak_height]
-        # y_s_1 = y_s[:, lim_min:peak_height]
-        # x_s_2 = x_s[peak_height:lim_max]
-        # y_s_2 = y_s[:, peak_height:lim_max]
-        return  # x_s_1, y_s_1, x_s_2, y_s_2
-
     def compute_integral(self, x_s, y_s):
         y_s = y_s - self.compute_baseline(x_s, y_s)
         if len(x_s) == 0:
@@ -163,13 +151,7 @@ class IntegrateFeatureFullWidthHalfMaxBaseline(IntegrateFeature):
         y_s[whole_nan_rows, :] = 0
         # select positions
         max_y_pos = bottleneck.nanargmax(y_s, axis=1)
-        pos = x_s[max_y_pos]
-        # left = x_s[0:bottleneck.nanargmax(y_s, axis=1)]
-        # print(pos, bottleneck.nanargmax(y_s, axis=1))
         half_peak = bottleneck.nanmax(y_s, axis=1) / 2
-        print("half peak:", half_peak)
-        print("pos", pos)
-        # print(y_s - np.ones((y_s.shape[0],)) * half_peak)
         rotated_y_s = y_s
         fwhm = []
         for n in range(len(rotated_y_s)):
@@ -177,8 +159,6 @@ class IntegrateFeatureFullWidthHalfMaxBaseline(IntegrateFeature):
             limit_1, limit_2 = bottleneck.nanargmin(rotated_y_s[n][0:max_y_pos[n]]), max_y_pos[
                                                                                          n] + bottleneck.nanargmin(
                 rotated_y_s[n][max_y_pos[n]:-1])
-            print(x_s[np.array([limit_1, limit_2])])
-            print(x_s[limit_2] - x_s[limit_1])
             fwhm.append(abs(x_s[limit_2] - x_s[limit_1]))
         return fwhm
 
