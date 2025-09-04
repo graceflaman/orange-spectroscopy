@@ -123,6 +123,8 @@ class IntegrateFeatureFullWidthHalfMaxBaseline(IntegrateFeature):
                 )
 
     def compute_baseline(self, x, y):
+        if np.any(np.isnan(y)):
+            y, _ = nan_extend_edges_and_interpolate(x, y)
         return edge_baseline(x, y)
 
     def limit_region_half_peak(self, x, y_s):
@@ -149,25 +151,29 @@ class IntegrateFeatureFullWidthHalfMaxBaseline(IntegrateFeature):
         # avoid whole nan rows
         whole_nan_rows = np.isnan(y_s).all(axis=1)
         y_s[whole_nan_rows, :] = 0
+        if np.any(np.isnan(y_s)):
+            # interpolate unknowns as trapz can not handle them
+            y_s, _ = nan_extend_edges_and_interpolate(x_s, y_s)
         # select positions
         max_y_pos = bottleneck.nanargmax(y_s, axis=1)
         half_peak = bottleneck.nanmax(y_s, axis=1) / 2
-        rotated_y_s = y_s
         fwhm = []
-        for n in range(len(rotated_y_s)):
-            rotated_y_s[n] = abs(rotated_y_s[n] - half_peak[n])
-            limit_1, limit_2 = bottleneck.nanargmin(rotated_y_s[n][0:max_y_pos[n]]), max_y_pos[
-                                                                                         n] + bottleneck.nanargmin(
-                rotated_y_s[n][max_y_pos[n]:-1])
-            fwhm.append(abs(x_s[limit_2] - x_s[limit_1]))
+
+        for n in range(len(y_s)):
+            y_s[n] = abs(y_s[n] - half_peak[n])
+            try:
+                limit_1, limit_2 = (bottleneck.nanargmin(y_s[n][0:max_y_pos[n]]),
+                                    max_y_pos[n] + bottleneck.nanargmin(y_s[n][max_y_pos[n]:-1]))
+                fwhm.append(abs(x_s[limit_2] - x_s[limit_1]))
+            except ValueError:
+                fwhm.append(np.nan)
+
         return fwhm
 
     def compute_draw_info(self, x, ys):
         bs = self.compute_baseline(x, ys)
         im = bottleneck.nanargmax(ys - bs, axis=1)
-        xl, peak_max, xl_half_min, y_sl_half_peak_min, xl_half_max, y_sl_half_peak_max, width = self.limit_region_half_peak(
-            x, ys)
-        print(width)
+        xl, peak_max, xl_half_min, y_sl_half_peak_min, xl_half_max, y_sl_half_peak_max, width = self.limit_region_half_peak(x, ys)
         lines = (x[im], bs[np.arange(bs.shape[0]), im]), (x[im], ys[np.arange(ys.shape[0]), im])
         half_max = (bs[np.arange(bs.shape[0]), im] + ys[np.arange(ys.shape[0]), im]) / 2
         peak_edge_min = xl_half_min[bottleneck.nanargmin(abs(y_sl_half_peak_min - half_max), axis=1)]
