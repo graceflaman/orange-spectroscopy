@@ -223,6 +223,11 @@ class IntegrateAllanDev(IntegrateSimpleEditor):
     integrator = Integrate.AllanDev
 
 
+class IntegrateFWHMBaseline(IntegrateSimpleEditor):
+    qualname = "orangecontrib.infrared.integrate.fwhmbaseline"
+    integrator = Integrate.FWHMBaseline
+
+
 class IntegrateSeparateBaselineEditor(IntegrateSimpleEditor):
     qualname = "orangecontrib.infrared.integrate.baseline_separate"
     integrator = Integrate.Separate
@@ -257,7 +262,8 @@ PREPROCESSORS = [
         IntegrateIntegralRatio,
         IntegratePeakHeightRatio,
         IntegrateStandardDeviation,
-        IntegrateAllanDev
+        IntegrateAllanDev,
+        IntegrateFWHMBaseline
     ]
 ]
 

@@ -110,6 +110,95 @@ class IntegrateFeatureEdgeBaseline(IntegrateFeature):
                 ("fill", ((x, self.compute_baseline(x, ys)), (x, ys)))]
 
 
+class IntegrateFeatureFullWidthHalfMaxBaseline(IntegrateFeature):
+    """ Full Width at half max of peak from baseline."""
+
+    name = "FWHM - Peak from baseline"
+    InheritEq = True
+
+    @staticmethod
+    def parameters():
+        return (("Low limit", "Low limit for integration (inclusive)"),
+                ("High limit", "High limit for integration (inclusive)"),
+                )
+
+    def compute_baseline(self, x, y):
+        return edge_baseline(x, y)
+
+    def limit_region_half_peak(self, x, y_s):
+        bs = self.compute_baseline(x, y_s)
+        peak_max = bottleneck.nanargmax(y_s - bs, axis=1)[0]
+        lim_min, lim_max = min(self.limits[:2]), max(self.limits[:2])
+        lim_min = np.searchsorted(x, lim_min, side="left")
+        lim_max = np.searchsorted(x, lim_max, side="right")
+        x = x[lim_min:lim_max]
+        y_s = y_s[:, lim_min:lim_max]
+        x_half_min = x[lim_min:peak_max]
+        x_half_max = x[peak_max:lim_max]
+        y_s_half_peak_min = y_s[:, lim_min:peak_max]
+        y_s_half_peak_max = y_s[:, peak_max:lim_max]
+        edge_min = bottleneck.nanargmin(abs(y_s_half_peak_min - y_s[:, peak_max] / 2))
+        edge_max = bottleneck.nanargmin(abs(y_s_half_peak_max - y_s[:, peak_max] / 2))
+        width = abs(x[edge_max] - x[edge_min])
+        return x, peak_max, x_half_min, y_s_half_peak_min, x_half_max, y_s_half_peak_max, width
+
+    def limit_region(self, x_s, y_s):
+        peak_height = bottleneck.nanargmax(y_s, axis=1)
+        lim_min, lim_max = min(self.limits), max(self.limits)
+        print(lim_max, lim_min, peak_height)
+        # lim_min = np.searchsorted(x_s, lim_min, side="left")
+        # lim_max = np.searchsorted(x_s, lim_max, side="right")
+        # x_s_1 = x_s[lim_min:peak_height]
+        # y_s_1 = y_s[:, lim_min:peak_height]
+        # x_s_2 = x_s[peak_height:lim_max]
+        # y_s_2 = y_s[:, peak_height:lim_max]
+        return  # x_s_1, y_s_1, x_s_2, y_s_2
+
+    def compute_integral(self, x_s, y_s):
+        y_s = y_s - self.compute_baseline(x_s, y_s)
+        if len(x_s) == 0:
+            return np.zeros((y_s.shape[0],)) * np.nan
+        # avoid whole nan rows
+        whole_nan_rows = np.isnan(y_s).all(axis=1)
+        y_s[whole_nan_rows, :] = 0
+        # select positions
+        max_y_pos = bottleneck.nanargmax(y_s, axis=1)
+        pos = x_s[max_y_pos]
+        # left = x_s[0:bottleneck.nanargmax(y_s, axis=1)]
+        # print(pos, bottleneck.nanargmax(y_s, axis=1))
+        half_peak = bottleneck.nanmax(y_s, axis=1) / 2
+        print("half peak:", half_peak)
+        print("pos", pos)
+        # print(y_s - np.ones((y_s.shape[0],)) * half_peak)
+        rotated_y_s = y_s
+        fwhm = []
+        for n in range(len(rotated_y_s)):
+            rotated_y_s[n] = abs(rotated_y_s[n] - half_peak[n])
+            limit_1, limit_2 = bottleneck.nanargmin(rotated_y_s[n][0:max_y_pos[n]]), max_y_pos[
+                                                                                         n] + bottleneck.nanargmin(
+                rotated_y_s[n][max_y_pos[n]:-1])
+            print(x_s[np.array([limit_1, limit_2])])
+            print(x_s[limit_2] - x_s[limit_1])
+            fwhm.append(abs(x_s[limit_2] - x_s[limit_1]))
+        return fwhm
+
+    def compute_draw_info(self, x, ys):
+        bs = self.compute_baseline(x, ys)
+        im = bottleneck.nanargmax(ys - bs, axis=1)
+        xl, peak_max, xl_half_min, y_sl_half_peak_min, xl_half_max, y_sl_half_peak_max, width = self.limit_region_half_peak(
+            x, ys)
+        print(width)
+        lines = (x[im], bs[np.arange(bs.shape[0]), im]), (x[im], ys[np.arange(ys.shape[0]), im])
+        half_max = (bs[np.arange(bs.shape[0]), im] + ys[np.arange(ys.shape[0]), im]) / 2
+        peak_edge_min = xl_half_min[bottleneck.nanargmin(abs(y_sl_half_peak_min - half_max), axis=1)]
+        peak_edge_max = xl_half_max[bottleneck.nanargmin(abs(y_sl_half_peak_max - half_max), axis=1)]
+        fwhm_line = (peak_edge_min, half_max), (peak_edge_max, half_max)
+        return [("curve", (x, self.compute_baseline(x, ys), INTEGRATE_DRAW_BASELINE_PENARGS)),
+                ("curve", (x, ys, INTEGRATE_DRAW_BASELINE_PENARGS)),
+                ("line", lines),
+                ("line", fwhm_line)]
+
+
 class IntegrateFeatureEdgeBaselineAbsolute(IntegrateFeatureEdgeBaseline):
     """ A linear edge-to-edge baseline subtraction. """
 
@@ -506,10 +595,11 @@ class Integrate(Preprocess):
                  IntegrateFeaturePeaktoPeakIntegralRatio,
                  IntegrateFeaturePeaktoPeakHeightBaselineRatio,
                  IntegrateFeatureStandardDeviation,
-                 IntegrateFeatureAllanDev]
+                 IntegrateFeatureAllanDev,
+                 IntegrateFeatureFullWidthHalfMaxBaseline]
 
     # Integration methods
-    Simple, Baseline, BaselineAbsolute, PeakMax, PeakBaseline, PeakAt, PeakX, PeakXBaseline, Separate, P2PIntegralRatio, P2PHeightRatio, StandardDeviation, AllanDev = INTEGRALS
+    Simple, Baseline, BaselineAbsolute, PeakMax, PeakBaseline, PeakAt, PeakX, PeakXBaseline, Separate, P2PIntegralRatio, P2PHeightRatio, StandardDeviation, AllanDev, FWHMBaseline = INTEGRALS
 
     def __init__(self, methods=Baseline, limits=None, names=None, metas=False):
         self.methods = methods
