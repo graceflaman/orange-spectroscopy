@@ -111,6 +111,18 @@ class IntegrateFeatureEdgeBaseline(IntegrateFeature):
                 ("fill", ((x, self.compute_baseline(x, ys)), (x, ys)))]
 
 
+class IntegrateFeatureEdgeBaselineAbsolute(IntegrateFeatureEdgeBaseline):
+
+    name = "Absolute integral from baseline"
+    InheritEq = True
+
+    def compute_integral(self, x, y_s):
+        if np.any(np.isnan(y_s)):
+            y_s, _ = nan_extend_edges_and_interpolate(x, y_s)
+        y_s = y_s - self.compute_baseline(x, y_s)
+        return np.trapezoid(np.abs(y_s), x, axis=1)
+
+
 class IntegrateFeatureSeparateBaseline(IntegrateFeature):
 
     name = "Integral from separate baseline"
@@ -304,6 +316,7 @@ class Integrate(Preprocess):
 
     INTEGRALS = [IntegrateFeatureSimple,
                  IntegrateFeatureEdgeBaseline,
+                 IntegrateFeatureEdgeBaselineAbsolute,
                  IntegrateFeaturePeakSimple,
                  IntegrateFeaturePeakEdgeBaseline,
                  IntegrateFeatureAtPeak,
@@ -312,7 +325,7 @@ class Integrate(Preprocess):
                  IntegrateFeatureSeparateBaseline]
 
     # Integration methods
-    Simple, Baseline, PeakMax, PeakBaseline, PeakAt, PeakX, PeakXBaseline, Separate = INTEGRALS
+    Simple, Baseline, BaselineAbsolute, PeakMax, PeakBaseline, PeakAt, PeakX, PeakXBaseline, Separate = INTEGRALS
 
     def __init__(self, methods=Baseline, limits=None, names=None, metas=False):
         self.methods = methods
