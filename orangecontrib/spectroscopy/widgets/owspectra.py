@@ -89,6 +89,9 @@ def selection_modifiers():
 class ParameterSetter(CommonParameterSetter):
 
     VIEW_RANGE_BOX = "View Range"
+    DEFAULT_LINE_WIDTH = 1
+    SPECTRA_BOX = "Spectra"
+    LINE_WIDTH_LABEL = "Line width"
 
     def __init__(self, master):
         super().__init__()
@@ -111,6 +114,10 @@ class ParameterSetter(CommonParameterSetter):
             self.VIEW_RANGE_BOX: {
                 "X": {"xMin": (FloatOrUndefined(), None), "xMax": (FloatOrUndefined(), None)},
                 "Y": {"yMin": (FloatOrUndefined(), None), "yMax": (FloatOrUndefined(), None)}
+            },
+            self.SPECTRA_BOX: {
+                self.LINE_WIDTH_LABEL: {self.LINE_WIDTH_LABEL:
+                                            (range(1, 10), self.DEFAULT_LINE_WIDTH)}
             }
         }
 
@@ -128,6 +135,13 @@ class ParameterSetter(CommonParameterSetter):
             self.viewbox.setRange(self.viewbox.viewRect())
 
         self._setters[self.VIEW_RANGE_BOX] = {"X": set_limits, "Y": set_limits}
+
+        def set_line_width(**args):
+            if self.LINE_WIDTH_LABEL in args:
+                lw = args[self.LINE_WIDTH_LABEL]
+                self.master.set_line_width(lw)
+
+        self._setters[self.SPECTRA_BOX] = {self.LINE_WIDTH_LABEL: set_line_width}
 
     @property
     def viewbox(self):
@@ -927,6 +941,8 @@ class CurvePlot(QWidget, OWComponent, SelectionGroupMixin):
         self.subset = None  # current subset input, an array of indices
         self.subset_indices = None  # boolean index array with indices in self.data
 
+        self.line_width = 1
+
         self.plotview = PlotWidget(viewBox=InteractiveViewBoxC(self))
         self.plot = self.plotview.getPlotItem()
         self.plot.hideButtons()  # hide the autorange button
@@ -950,14 +966,8 @@ class CurvePlot(QWidget, OWComponent, SelectionGroupMixin):
                                     slot=self.mouse_moved_closest, delay=0.1)
         self.plot.vb.sigRangeChanged.connect(self.resized)
         self.plot.vb.sigResized.connect(self.resized)
-        self.pen_mouse = pg.mkPen(color=(0, 0, 255), width=2)
-        pen_normal, pen_selected, pen_subset = self._generate_pens(QColor(60, 60, 60, 200),
-                                                                   QColor(200, 200, 200, 127),
-                                                                   QColor(0, 0, 0, 255))
-        self._default_pen_selected = pen_selected
-        self.pen_normal = defaultdict(lambda: pen_normal)
-        self.pen_subset = defaultdict(lambda: pen_subset)
-        self.pen_selected = defaultdict(lambda: pen_selected)
+
+        self._update_default_pens()
 
         self.label = pg.TextItem("", anchor=(1, 0), fill="#FFFFFFBB")
         self.label.setText("", color=(0, 0, 0))
@@ -1132,6 +1142,17 @@ class CurvePlot(QWidget, OWComponent, SelectionGroupMixin):
         self.viewhelpers_show()
 
         self.parameter_setter = ParameterSetter(self)
+
+    def _update_default_pens(self):
+        self.pen_mouse = pg.mkPen(color=(0, 0, 255), width=self.line_width+1)
+        pen_normal, pen_selected, pen_subset = self._generate_pens(QColor(60, 60, 60, 200),
+                                                                   QColor(200, 200, 200, 127),
+                                                                   QColor(0, 0, 0, 255),
+                                                                   width=self.line_width)
+        self._default_pen_selected = pen_selected
+        self.pen_normal = defaultdict(lambda: pen_normal)
+        self.pen_subset = defaultdict(lambda: pen_subset)
+        self.pen_selected = defaultdict(lambda: pen_selected)
 
     def update_lock_indicators(self):
         self.locked_axes_changed.emit(self.plot.vb.is_view_locked())
@@ -1476,7 +1497,12 @@ class CurvePlot(QWidget, OWComponent, SelectionGroupMixin):
         n_selected = np.count_nonzero(self.selection_group[self.sampled_indices])
         use_thick = n_selected <= MAX_THICK_SELECTED
         for v in itertools.chain(self.pen_selected.values(), [self._default_pen_selected]):
-            v.setWidth(2 if use_thick else 1)
+            v.setWidth(self.line_width+1 if use_thick else self.line_width)
+
+    def set_line_width(self, width):
+        self.line_width = width
+        self._update_default_pens()
+        self.update_view()
 
     def set_curve_pen(self, idc):
         idcdata = self.sampled_indices[idc]
@@ -1570,15 +1596,15 @@ class CurvePlot(QWidget, OWComponent, SelectionGroupMixin):
         self.curves_plotted.append((x, np.array([ylow, yhigh])))
 
     @staticmethod
-    def _generate_pens(color, color_unselected=None, color_selected=None):
-        pen_subset = pg.mkPen(color=color, width=1)
+    def _generate_pens(color, color_unselected=None, color_selected=None, width=1):
+        pen_subset = pg.mkPen(color=color, width=width)
         if color_selected is None:
             color_selected = color.darker(135)
             color_selected.setAlphaF(1.0)  # only gains in a sparse space
-        pen_selected = pg.mkPen(color=color_selected, width=2, style=Qt.DashLine)
+        pen_selected = pg.mkPen(color=color_selected, width=width, style=Qt.DashLine)
         if color_unselected is None:
             color_unselected = color.lighter(160)
-        pen_normal = pg.mkPen(color=color_unselected, width=1)
+        pen_normal = pg.mkPen(color=color_unselected, width=width)
         return pen_normal, pen_selected, pen_subset
 
     def set_pen_colors(self):
@@ -1599,7 +1625,7 @@ class CurvePlot(QWidget, OWComponent, SelectionGroupMixin):
                 color = QColor(color)  # copy color
                 color.setAlphaF(0.9)
                 self.pen_normal[v], self.pen_selected[v], self.pen_subset[v] = \
-                    self._generate_pens(color)
+                    self._generate_pens(color, width=self.line_width)
                 pen = pg.mkPen(color=color)
                 brush = pg.mkBrush(color=color)
                 if legend:
@@ -1775,7 +1801,7 @@ class OWSpectra(OWWidget, SelectionOutputsMixin):
 
     want_control_area = False
 
-    settings_version = 5
+    settings_version = 6
     settingsHandler = DomainContextHandler()
 
     curveplot = SettingProvider(CurvePlot)
