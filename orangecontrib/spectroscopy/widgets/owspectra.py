@@ -40,7 +40,7 @@ from Orange.widgets.utils.plot import \
 from Orange.widgets.utils import saveplot
 from Orange.widgets.visualize.owscatterplotgraph import LegendItem
 from Orange.widgets.utils.concurrent import TaskState, ConcurrentMixin
-from Orange.widgets.visualize.utils.plotutils import HelpEventDelegate, PlotWidget
+from Orange.widgets.visualize.utils.plotutils import HelpEventDelegate, PlotWidget, AxisItem
 from Orange.widgets.visualize.utils.customizableplot import CommonParameterSetter
 
 from orangecontrib.spectroscopy import dask_client
@@ -943,17 +943,22 @@ class CurvePlot(QWidget, OWComponent, SelectionGroupMixin):
 
         self.line_width = 1
 
-        self.plotview = PlotWidget(viewBox=InteractiveViewBoxC(self))
+        axis_items = {"left": AxisItem("left"),
+                      "bottom": AxisItem("bottom"),
+                      "right": AxisItem("right", showValues=False),
+                      "top": AxisItem("top", showValues=False)}
+
+        self.plotview = PlotWidget(viewBox=InteractiveViewBoxC(self), axisItems=axis_items)
         self.plot = self.plotview.getPlotItem()
         self.plot.hideButtons()  # hide the autorange button
         self.plot.setDownsampling(auto=True, mode="peak")
 
+        # show the whole top and right axis (PyQtGraphs sets it to 0)
+        self.plot.layout.setRowSpacing(0, max(self.plot.layout.rowSpacing(0), 1))
+        self.plot.layout.setColumnMinimumWidth(2, max(self.plot.layout.columnMinimumWidth(2), 1))
+
         self.connected_views = []
         self.plot.vb.sigResized.connect(self._update_connected_views)
-
-        for pos in ["top", "right"]:
-            self.plot.showAxis(pos, True)
-            self.plot.getAxis(pos).setStyle(showValues=False)
 
         self.markings = []
         self.peak_labels = []
