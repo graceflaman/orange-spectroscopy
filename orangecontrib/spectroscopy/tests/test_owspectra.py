@@ -50,25 +50,32 @@ class TestOWSpectra(WidgetTest):
         cls.normal_data = [cls.iris, cls.collagen]
         # dataset with a single attribute
         iris1 = cls.iris.transform(Domain(cls.iris.domain[:1]))
+        iris1.name = "iris1"
         # dataset without any attributes
         iris0 = cls.iris.transform(Domain([]))
+        iris0.name = "iris0"
         # data set with no lines
         empty = cls.iris[:0]
+        empty.name = "empty"
         # dataset with large blank regions
         irisunknown = Interpolate(np.arange(20))(cls.iris)
+        irisunknown.name = "irisunknown"
         cls.unknown_last_instance = cls.iris.copy()
         with cls.unknown_last_instance.unlocked():
             cls.unknown_last_instance.X[73] = NAN  # needs to be unknown after sampling and permutation
+        cls.unknown_last_instance.name = "unknown_last_instance"
         # dataset with mixed unknowns
         cls.unknown_pts = cls.collagen.copy()
         with cls.unknown_pts.unlocked():
             cls.unknown_pts[5] = np.nan
             cls.unknown_pts[8:10] = np.nan
             cls.unknown_pts[15] = np.inf
+        cls.unknown_pts.name = "unknown_pts"
         # a data set with only infs
         cls.only_inf = iris1.copy()
         with cls.only_inf.unlocked():
             cls.only_inf.X *= np.inf
+        cls.only_inf.name = "only_inf"
         cls.strange_data = [iris1, iris0, empty, irisunknown, cls.unknown_last_instance,
                             cls.only_inf, cls.unknown_pts]
 
@@ -126,9 +133,10 @@ class TestOWSpectra(WidgetTest):
 
     def test_mouse_move(self):
         for data in self.normal_data + self.strange_data:
-            self.send_signal("Data", data)
-            wait_for_graph(self.widget)
-            self.do_mousemove()
+            with self.subTest(data.name):
+                self.send_signal("Data", data)
+                wait_for_graph(self.widget)
+                self.do_mousemove()
 
     def test_rescale_y(self):
         for data in self.normal_data + self.strange_data:
