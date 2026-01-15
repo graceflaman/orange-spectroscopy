@@ -103,20 +103,22 @@ class TestOWSpectra(WidgetTest):
 
     def do_mousemove(self):
         mr = self.widget.curveplot.MOUSE_RADIUS
+        sbr = self.widget.curveplot.plot.sceneBoundingRect()
         self.widget.curveplot.MOUSE_RADIUS = 1000
         self.widget.curveplot.mouse_moved_closest(
-            (self.widget.curveplot.plot.sceneBoundingRect().center(),))
+            (sbr.center(),))
         if self.widget.curveplot.data is not None \
                 and np.any(np.isfinite(self.widget.curveplot.data.X)):  # a valid curve exists
             self.assertIsNotNone(self.widget.curveplot.highlighted)
         else:  # no curve can be detected
             self.assertIsNone(self.widget.curveplot.highlighted)
 
-        # assume nothing is directly in the middle
+        # assume nothing is at the chosen point
         # therefore nothing should be highlighted
-        self.widget.curveplot.MOUSE_RADIUS = 0.1
+        nothing_point = (sbr.center() + sbr.topLeft())/2
+        self.widget.curveplot.MOUSE_RADIUS = 5  # locally, test_mouse_move failed with 30
         self.widget.curveplot.mouse_moved_closest(
-            (self.widget.curveplot.plot.sceneBoundingRect().center(),))
+            (nothing_point,))
         self.assertIsNone(self.widget.curveplot.highlighted)
 
         self.widget.curveplot.MOUSE_RADIUS = mr
