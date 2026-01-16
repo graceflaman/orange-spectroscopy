@@ -122,6 +122,13 @@ class IntegrateFeatureEdgeBaselineAbsolute(IntegrateFeatureEdgeBaseline):
         y_s = y_s - self.compute_baseline(x, y_s)
         return scipy.integrate.trapezoid(np.abs(y_s), x, axis=1)
 
+    def compute_draw_info(self, x, ys):
+        baseline = self.compute_baseline(x, ys)
+        abs_ys = np.abs(ys - baseline) + baseline
+        return [("curve", (x, baseline, INTEGRATE_DRAW_BASELINE_PENARGS)),
+                ("curve", (x, abs_ys, INTEGRATE_DRAW_BASELINE_PENARGS)),
+                ("fill", ((x, baseline), (x, abs_ys)))]
+
 
 class IntegrateFeatureSeparateBaseline(IntegrateFeature):
 
