@@ -120,7 +120,7 @@ class IntegrateFeatureEdgeBaselineAbsolute(IntegrateFeatureEdgeBaseline):
         if np.any(np.isnan(y_s)):
             y_s, _ = nan_extend_edges_and_interpolate(x, y_s)
         y_s = y_s - self.compute_baseline(x, y_s)
-        return np.trapezoid(np.abs(y_s), x, axis=1)
+        return scipy.integrate.trapezoid(np.abs(y_s), x, axis=1)
 
 
 class IntegrateFeatureSeparateBaseline(IntegrateFeature):
