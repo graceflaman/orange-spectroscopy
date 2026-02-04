@@ -20,7 +20,7 @@ class IntegrateEditor(BaseEditor):
     name = "Integrate"
     qualname = "orangecontrib.infrared.integrate"
 
-    Integrators_classes = Integrate.INTEGRALS[:-1]  # without SeparateBaseline
+    Integrators_classes = [i for i in Integrate.INTEGRALS if i not in (Integrate.Separate,)]
     Integrators = [a.name for a in Integrators_classes]
 
     def __init__(self, parent=None, **kwargs):

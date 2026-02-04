@@ -323,16 +323,17 @@ class Integrate(Preprocess):
 
     INTEGRALS = [IntegrateFeatureSimple,
                  IntegrateFeatureEdgeBaseline,
-                 IntegrateFeatureEdgeBaselineAbsolute,
                  IntegrateFeaturePeakSimple,
                  IntegrateFeaturePeakEdgeBaseline,
                  IntegrateFeatureAtPeak,
                  IntegrateFeaturePeakXSimple,
                  IntegrateFeaturePeakXEdgeBaseline,
-                 IntegrateFeatureSeparateBaseline]
+                 IntegrateFeatureSeparateBaseline,
+                 IntegrateFeatureEdgeBaselineAbsolute,
+                 ]
 
     # Integration methods
-    Simple, Baseline, BaselineAbsolute, PeakMax, PeakBaseline, PeakAt, PeakX, PeakXBaseline, Separate = INTEGRALS
+    Simple, Baseline, PeakMax, PeakBaseline, PeakAt, PeakX, PeakXBaseline, Separate, BaselineAbsolute = INTEGRALS
 
     def __init__(self, methods=Baseline, limits=None, names=None, metas=False):
         self.methods = methods
